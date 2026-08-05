@@ -8,7 +8,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Float, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { useStore, VOCABULARY_DATA } from "../store";
-import { VocabularyWord } from "../types";
+import { VocabularyWord, ExploreCategory } from "../types";
 import gsap from "gsap";
 
 // --- 3D COMPOSITE MODEL HANDLERS ---
@@ -1289,6 +1289,165 @@ function DrawingSurface() {
   );
 }
 
+function RobloxAvatarModel() {
+  return (
+    <group>
+      {/* Simple blocky Roblox-style avatar body */}
+      <mesh position={[0, 0.4, 0]} castShadow>
+        <boxGeometry args={[0.55, 0.7, 0.35]} />
+        <meshStandardMaterial color="#2563EB" roughness={0.4} metalness={0.1} />
+      </mesh>
+      <mesh position={[0, 0.98, 0]} castShadow>
+        <boxGeometry args={[0.5, 0.5, 0.5]} />
+        <meshStandardMaterial color="#FBBF24" roughness={0.35} metalness={0.05} />
+      </mesh>
+      <mesh position={[-0.28, 0.45, 0]} castShadow>
+        <boxGeometry args={[0.12, 0.45, 0.12]} />
+        <meshStandardMaterial color="#2563EB" roughness={0.4} />
+      </mesh>
+      <mesh position={[0.28, 0.45, 0]} castShadow>
+        <boxGeometry args={[0.12, 0.45, 0.12]} />
+        <meshStandardMaterial color="#2563EB" roughness={0.4} />
+      </mesh>
+      <mesh position={[-0.14, 0.1, 0]} castShadow>
+        <boxGeometry args={[0.14, 0.4, 0.14]} />
+        <meshStandardMaterial color="#111827" roughness={0.6} />
+      </mesh>
+      <mesh position={[0.14, 0.1, 0]} castShadow>
+        <boxGeometry args={[0.14, 0.4, 0.14]} />
+        <meshStandardMaterial color="#111827" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 1.05, 0.22]} castShadow>
+        <boxGeometry args={[0.22, 0.18, 0.02]} />
+        <meshStandardMaterial color="#0F172A" />
+      </mesh>
+      <mesh position={[0, 0.8, 0.28]} castShadow>
+        <boxGeometry args={[0.35, 0.14, 0.08]} />
+        <meshStandardMaterial color="#111827" />
+      </mesh>
+    </group>
+  );
+}
+
+interface PlayerAvatarProps {
+  controlsRef: React.RefObject<any>;
+  category: ExploreCategory;
+}
+
+function PlayerAvatar({ controlsRef, category }: PlayerAvatarProps) {
+  const playerRef = useRef<THREE.Group>(null);
+  const positionRef = useRef(new THREE.Vector3(0, 0, 2.4));
+  const directionRef = useRef(0);
+  const moveState = useRef({ forward: false, backward: false, left: false, right: false });
+  const speed = 2.8;
+  const maxRadius = 4.5;
+  const { camera } = useThree();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.key.toLowerCase()) {
+        case "w":
+        case "arrowup":
+          moveState.current.forward = true;
+          break;
+        case "s":
+        case "arrowdown":
+          moveState.current.backward = true;
+          break;
+        case "a":
+        case "arrowleft":
+          moveState.current.left = true;
+          break;
+        case "d":
+        case "arrowright":
+          moveState.current.right = true;
+          break;
+        default:
+          return;
+      }
+    };
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      switch (event.key.toLowerCase()) {
+        case "w":
+        case "arrowup":
+          moveState.current.forward = false;
+          break;
+        case "s":
+        case "arrowdown":
+          moveState.current.backward = false;
+          break;
+        case "a":
+        case "arrowleft":
+          moveState.current.left = false;
+          break;
+        case "d":
+        case "arrowright":
+          moveState.current.right = false;
+          break;
+        default:
+          return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  useFrame((state, delta) => {
+    const current = positionRef.current;
+    const move = moveState.current;
+    const velocity = new THREE.Vector3();
+
+    if (move.forward) velocity.z -= 1;
+    if (move.backward) velocity.z += 1;
+    if (move.left) velocity.x -= 1;
+    if (move.right) velocity.x += 1;
+
+    if (velocity.lengthSq() > 0.001) {
+      velocity.normalize().multiplyScalar(speed * delta);
+      current.add(velocity);
+      if (current.length() > maxRadius) {
+        current.setLength(maxRadius);
+      }
+      directionRef.current = Math.atan2(velocity.x, velocity.z);
+    }
+
+    if (playerRef.current) {
+      playerRef.current.position.copy(current);
+      playerRef.current.rotation.y = directionRef.current;
+    }
+
+    const desiredCameraPosition = new THREE.Vector3(current.x, current.y + 2.6, current.z + 4.6);
+    const lookAtTarget = new THREE.Vector3(current.x, current.y + 0.8, current.z);
+
+    camera.position.lerp(desiredCameraPosition, 0.1);
+    if (controlsRef.current) {
+      controlsRef.current.target.lerp(lookAtTarget, 0.14);
+      controlsRef.current.update();
+    } else {
+      camera.lookAt(lookAtTarget);
+    }
+  });
+
+  const landColor = category === "sea" ? "#0EA5E9" : category === "animals" ? "#84CC16" : category === "pet" ? "#F59E0B" : "#22C55E";
+
+  return (
+    <group ref={playerRef} position={[0, 0, 2.4]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+        <circleGeometry args={[0.35, 28]} />
+        <meshStandardMaterial color={landColor} opacity={0.35} transparent />
+      </mesh>
+      <RobloxAvatarModel />
+    </group>
+  );
+}
+
 // --- DYNAMIC CAMERA ADJUSTMENT CONTROLLER COMPONENT ---
 function CameraController({ controlsRef }: { controlsRef: React.RefObject<any> }) {
   const { camera } = useThree();
@@ -1871,13 +2030,20 @@ export default function ThreeCanvas() {
     }
   };
 
+  const expandPosition = (position: [number, number, number], factor = 1.45) => {
+    const [x, y, z] = position;
+    const spreadX = x * factor + (Math.abs(x) < 0.4 ? 0 : Math.sign(x) * 0.18);
+    const spreadZ = z * factor + (Math.abs(z) < 0.4 ? 0 : Math.sign(z) * 0.18);
+    return [spreadX, y, spreadZ] as [number, number, number];
+  };
+
   const env = getEnvironmentProps();
 
   return (
     <div className="absolute inset-0 z-10 w-full h-full">
       <Canvas
         id="three-webgl-canvas"
-        camera={{ position: [0, 2.5, 4.5], fov: 50 }}
+        camera={{ position: [0, 3.4, 7.2], fov: 48 }}
         shadows
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
         style={{ background: env.skyColor }}
@@ -1916,13 +2082,13 @@ export default function ThreeCanvas() {
         <group position={[0, 0, 0]}>
           {/* Main rounded styled island ground turf */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow position={[0, -0.01, 0]}>
-            <cylinderGeometry args={[4, 4.1, 0.2, 32]} />
+            <cylinderGeometry args={[5.5, 5.6, 0.2, 48]} />
             <meshStandardMaterial color={env.floorColor} roughness={0.7} />
           </mesh>
 
           {/* Under-shadow cylinder outline */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, 0]}>
-            <cylinderGeometry args={[4.05, 4.05, 0.05, 32]} />
+            <cylinderGeometry args={[5.6, 5.6, 0.05, 48]} />
             <meshBasicMaterial color="#475569" transparent opacity={0.15} />
           </mesh>
         </group>
@@ -1934,11 +2100,14 @@ export default function ThreeCanvas() {
         {filteredWords.map((word) => (
           <InteractiveModel
             key={word.id}
-            word={word}
+            word={{ ...word, position: expandPosition(word.position) }}
             isFocused={currentWord?.id === word.id}
             onSelect={handleSelectWord}
           />
         ))}
+
+        {/* --- PLAYER AVATAR AND MOVEMENT --- */}
+        <PlayerAvatar controlsRef={controlsRef} category={activeCategory} />
 
         {/* --- 3D DRAWING ELEMENTS --- */}
         <DrawingRenderer />
@@ -1963,8 +2132,8 @@ export default function ThreeCanvas() {
           enablePan={true}
           enableZoom={true}
           minDistance={1.0}
-          maxDistance={12}
-          minPolarAngle={0.1}
+          maxDistance={16}
+          minPolarAngle={0.08}
           maxPolarAngle={Math.PI / 2 - 0.05} // prevent going underwater or ground level
         />
       </Canvas>
