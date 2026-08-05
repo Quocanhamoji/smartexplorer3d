@@ -1,0 +1,6 @@
+{
+  "name": "SmartExplorer 3D",
+  "description": "Ứng dụng học tiếng Anh tương tác 3D sinh động dành cho trẻ mầm non.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
